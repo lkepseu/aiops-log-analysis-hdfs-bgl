@@ -8,7 +8,7 @@ cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Parsing du dataset HDFS avec Drain
-python3 "$PROJECT_ROOT/1_logparser/parse_with_drain.py" --dataset HDFS
+#python3 "$PROJECT_ROOT/1_logparser/parse_with_drain.py" --dataset HDFS
 
 # Parsing du dataset BGL avec Drain
 python3 "$PROJECT_ROOT/1_logparser/parse_with_drain.py" --dataset BGL

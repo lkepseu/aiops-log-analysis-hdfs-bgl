@@ -43,7 +43,7 @@ def train_eval_random_forest(
     X_train_full = pd.concat([X_train, X_val], axis=0)
     y_train_full = pd.concat([y_train, y_val], axis=0)
 
-    rf_final = RandomForestClassifier(
+    rf_final = (
         n_estimators=200,
         max_depth=None,
         n_jobs=-1,

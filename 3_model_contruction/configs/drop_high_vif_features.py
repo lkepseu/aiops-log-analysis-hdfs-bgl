@@ -79,7 +79,7 @@ def drop_high_vif_features(
     vif_threshold: float = 10.0,
 ) -> pd.DataFrame:
     """
-    Supprime récursivement les features avec VIF > vif_threshold
+    Supprime récursivement les features avec VIF >= vif_threshold
     parmi les colonnes NUMÉRIQUES uniquement.
     Les colonnes non numériques (comme BlockId) sont préservées.
     """
@@ -109,7 +109,7 @@ def drop_high_vif_features(
         vif_values = _compute_vif_series(working_df)
         max_vif = vif_values.max()
 
-        if max_vif <= vif_threshold:
+        if max_vif < vif_threshold:
             break
 
         to_drop = vif_values.idxmax()

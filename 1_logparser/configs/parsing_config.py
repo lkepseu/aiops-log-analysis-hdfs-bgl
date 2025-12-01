@@ -63,15 +63,7 @@ def get_parsing_configs(base_input_dir: str = "data/raw",
 
             # 6) Taille après 'size ' en gardant le mot 'size'
             #    size 67108864  => size <*>
-            r"(?<=size\s)\d+",
-
-            # 7) Chemin de répertoires AVANT "part-"
-            #    /user/root/.../_task_.../part-00590.  => /<*>/part-00590.
-            r"(?<=/)[A-Za-z0-9._/\-]+(?=/part-)",
-
-            # 8) Entiers isolés (thread id, compteurs, etc.)
-            #    PacketResponder 2 for block ... => PacketResponder <*> for block ...
-            r"\b\d+\b",
+            r"(?<=size\s)\d+"
         ],
     )
 
@@ -85,31 +77,35 @@ def get_parsing_configs(base_input_dir: str = "data/raw",
     bgl_config = DrainConfig(
         dataset_name="BGL",
         log_file="BGL.log",
-        log_format="<Label> <Id> <Date> <Node> <Time> <NodeRepeat> <Type> <Component> <Level> <Content>",
+        log_format="<Label> <Timestamp> <Date> <Node> <Time> <NodeRepeat> <Type> <Component> <Level> <Content>",
         indir=base_input_dir,
         outdir=f"{base_output_dir}/BGL",
-        depth=6,
-        st=0.4,
+        depth=4,
+        st=0.3,
         rex=[
-            # 1) Timestamp complet BGL : 2005-08-22-11.50.11.486431
-            r"\d{4}-\d{2}-\d{2}-\d{2}\.\d{2}\.\d{2}\.\d{6}",
+                # 1) Timestamp complet BGL : 2005-08-22-11.50.11.486431
+                r"\d{4}-\d{2}-\d{2}-\d{2}\.\d{2}\.\d{2}\.\d{6}",
 
-            # 2) Date seule, si elle apparaît dans d'autres champs
-            #    2005.08.22
-            r"\d{4}.\d{2}.\d{2}",
+                # 2) Date type 2005.08.22
+                r"\d{4}\.\d{2}\.\d{2}",
 
-            # 3) Identifiant de noeud Blue Gene/L
-            #    R34-M1-N8-I:J18-U01  => <*>
-            r"R\d+-M\d+-N\d+(?:-[A-Z])?:J\d+-U\d+",
+                # 3) Identifiant de noeud Blue Gene/L : R34-M1-N8-I:J18-U01 etc.
+                r"R\d+-M\d+-N[\w-]+(:J\d+-U\d+)?",
 
-            # 4) Valeurs hexadécimales
-            #    0x00000000, 0xFFFE0000, etc.
-            r"0x[0-9A-Fa-f]+",
+                # 4) Registres flottants : fpr0, fpr1, ..., fpr31  → remplacés par <*>
+                #    (ça va fusionner une grosse quantité de templates ultra rares)
+                r"fpr\d+",
 
-            # 5) Entiers isolés (compteurs, NodeRepeat, offsets, etc.)
-            #    \b\d+\b ne touche PAS à r24, dbcr0, fpr29 (car ils ne sont pas purement numériques)
-            r"\b\d+\b",
-        ],
+                # 5) Gros mots hexadécimaux nus (adresses, flottants encodés, etc.)
+                #    ex : ffffffff, 3ff00000, b1145000
+                r"\b[0-9A-Fa-f]{8,16}\b",
+
+                # 6) Valeurs hexadécimales avec préfixe 0x
+                r"0x[0-9A-Fa-f]+",
+
+                # 7) Entiers décimaux isolés (compteurs, NodeRepeat, offsets, etc.)
+                r"\b\d+\b",
+            ],
     )
 
 
