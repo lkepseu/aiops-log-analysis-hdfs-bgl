@@ -33,7 +33,7 @@ def get_parsing_configs(base_input_dir: str = "data/raw",
     # 2009-07-20 11:54:51,821 12345 INFO org.apache.hadoop.hdfs.server.namenode.FSNamesystem MESSAGE...
     hdfs_config = DrainConfig(
         dataset_name="HDFS",
-        log_file="HDFS_2k.log",
+        log_file="HDFS.log",
         log_format="<Date> <Time> <Pid> <Level> <Component>: <Content>",
         indir=base_input_dir,
         outdir=f"{base_output_dir}/HDFS",
@@ -84,11 +84,8 @@ def get_parsing_configs(base_input_dir: str = "data/raw",
     # KERN 2005-08-22-11.50.11.486431 2005-08-22 R34-M1-N8-I 11:50:11.486431 1 RAS KERNEL INFO MESSAGE...
     bgl_config = DrainConfig(
         dataset_name="BGL",
-        log_file="BGL_2k.log",
-        log_format=(
-            "<Label> <Timestamp> <Date> <Node> <Time> <NodeRepeat> "
-            "<Type> <Component> <Level> <Content>"
-        ),
+        log_file="BGL.log",
+        log_format="<Label> <Id> <Date> <Node> <Time> <NodeRepeat> <Type> <Component> <Level> <Content>",
         indir=base_input_dir,
         outdir=f"{base_output_dir}/BGL",
         depth=6,
@@ -98,21 +95,18 @@ def get_parsing_configs(base_input_dir: str = "data/raw",
             r"\d{4}-\d{2}-\d{2}-\d{2}\.\d{2}\.\d{2}\.\d{6}",
 
             # 2) Date seule, si elle apparaît dans d'autres champs
-            #    2005-08-22
-            r"\d{4}-\d{2}-\d{2}",
+            #    2005.08.22
+            r"\d{4}.\d{2}.\d{2}",
 
-            # 3) Heure avec microsecondes (11:50:11.486431)
-            r"\d{2}:\d{2}:\d{2}\.\d{6}",
-
-            # 4) Identifiant de noeud Blue Gene/L
+            # 3) Identifiant de noeud Blue Gene/L
             #    R34-M1-N8-I:J18-U01  => <*>
             r"R\d+-M\d+-N\d+(?:-[A-Z])?:J\d+-U\d+",
 
-            # 5) Valeurs hexadécimales
+            # 4) Valeurs hexadécimales
             #    0x00000000, 0xFFFE0000, etc.
             r"0x[0-9A-Fa-f]+",
 
-            # 6) Entiers isolés (compteurs, NodeRepeat, offsets, etc.)
+            # 5) Entiers isolés (compteurs, NodeRepeat, offsets, etc.)
             #    \b\d+\b ne touche PAS à r24, dbcr0, fpr29 (car ils ne sont pas purement numériques)
             r"\b\d+\b",
         ],

@@ -41,9 +41,15 @@ def build_bgl_matrix_sliding(
     )
 
     # Étape B. Remplacer les valeurs manquantes par 0
-    matrix = matrix.fillna(0)
+    # (uniquement sur les colonnes numériques pour garder les ID/textes intacts)
+    numeric_cols = matrix.select_dtypes(include=["number", "float", "int"]).columns
+    matrix[numeric_cols] = matrix[numeric_cols].fillna(0)
 
-    # Étape C. Tri des colonnes (EventId triés afin d'avoir le format : Start, end, E1, E2, ..., EN)
+    # Étape C. Convertir les colonnes numériques en entiers
+    # (utile pour les histogrammes d'EventId)
+    matrix[numeric_cols] = matrix[numeric_cols].astype(int)
+
+    # Étape D. Tri des colonnes (EventId triés afin d'avoir le format : Start, end, E1, E2, ..., EN)
     event_cols = [c for c in matrix.columns if c not in ("window_start", "window_end")]
     matrix = matrix[["window_start", "window_end"] + sorted(event_cols)]
 

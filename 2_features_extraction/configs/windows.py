@@ -104,10 +104,6 @@ def apply_sliding_window(
     return pd.DataFrame(rows)
 
 
-import pandas as pd
-from typing import Callable
-
-
 def apply_windows_by_session(
     df: pd.DataFrame,
     session_extractor: Callable[[pd.Series], Optional[str]],
