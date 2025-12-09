@@ -1,63 +1,71 @@
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import TimeSeriesSplit
 
 from configs.metrics_utils import compute_binary_classification_metrics, print_metrics
 
 
-def train_eval_random_forest(
-    X_train: pd.DataFrame,
-    y_train: pd.Series,
-    X_val: pd.DataFrame,
-    y_val: pd.Series,
-    X_test: pd.DataFrame,
-    y_test: pd.Series,
+def train_eval_random_forest_timeseries(
+    X: pd.DataFrame,
+    y: pd.Series,
+    n_splits: int = 5,
 ) -> None:
     """
-    Entraîne un RandomForest :
-      - modèle initial : train (60%) -> eval sur val (20%)
-      - modèle final   : train+val (80%) -> eval sur test (20%)
+    Entraîne et évalue un RandomForest avec une stratégie de TimeSeries Cross-Validation
+    (Rolling Window / Sliding-origin evaluation) :
+
+      - Les indices de train/test respectent strictement l'ordre temporel.
+      - À chaque fold, la frontière train/test est déplacée vers le futur.
+      - Aucune fuite du futur vers le passé.
+      - Les données de test NE SONT PAS rebalancées (distribution réelle conservée).
+      - Le modèle est pondéré via class_weight="balanced" uniquement sur le train.
+
+    Paramètres
+    ----------
+    X : pd.DataFrame
+        Matrice de features triée chronologiquement (index croissant = temps).
+    y : pd.Series
+        Labels binaires correspondants (0 = normal, 1 = anomalie).
+    n_splits : int
+        Nombre de folds pour la TimeSeries Cross-Validation.
     """
 
-    # --------- 1) Modèle initial (train → val) ---------
-    rf = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=None,
-        n_jobs=-1,
-        class_weight="balanced",
-        random_state=42,
-    )
-    rf.fit(X_train, y_train)
+    # TimeSeriesSplit = Rolling Window (train = passé, test = futur)
+    tscv = TimeSeriesSplit(n_splits=n_splits)
 
-    y_val_pred = rf.predict(X_val)
-    y_val_proba = rf.predict_proba(X_val)[:, 1]
+    fold_metrics = []
 
-    metrics_val = compute_binary_classification_metrics(
-        y_true=y_val,
-        y_pred=y_val_pred,
-        y_proba=y_val_proba,
-    )
-    print_metrics("Random Forest - Validation (60% → 20%)", metrics_val)
+    for fold_idx, (train_idx, test_idx) in enumerate(tscv.split(X), start=1):
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 
-    # --------- 2) Modèle final (train+val → test) ---------
-    X_train_full = pd.concat([X_train, X_val], axis=0)
-    y_train_full = pd.concat([y_train, y_val], axis=0)
+        # ---- Modèle entraîné uniquement sur le passé ----
+        rf = RandomForestClassifier(
+            n_estimators=200,
+            max_depth=None,
+            n_jobs=-1,
+            class_weight="balanced",  # repondération uniquement sur le TRAIN
+            random_state=42,
+        )
+        rf.fit(X_train, y_train)
 
-    rf_final = (
-        n_estimators=200,
-        max_depth=None,
-        n_jobs=-1,
-        class_weight="balanced",
-        random_state=42,
-    )
-    rf_final.fit(X_train_full, y_train_full)
+        # ---- Évaluation sur le futur (test du fold) ----
+        # IMPORTANT : test jamais rebalancé -> distribution réelle conservée
+        y_test_pred = rf.predict(X_test)
+        y_test_proba = rf.predict_proba(X_test)[:, 1]
 
-    y_test_pred = rf_final.predict(X_test)
-    y_test_proba = rf_final.predict_proba(X_test)[:, 1]
+        metrics = compute_binary_classification_metrics(
+            y_true=y_test,
+            y_pred=y_test_pred,
+            y_proba=y_test_proba,
+        )
 
-    metrics_test = compute_binary_classification_metrics(
-        y_true=y_test,
-        y_pred=y_test_pred,
-        y_proba=y_test_proba,
-    )
-    print_metrics("Random Forest - Test (80% → 20%)", metrics_test)
+        title = f"Random Forest - TimeSeriesCV Fold {fold_idx}"
+        print_metrics(title, metrics)
+        fold_metrics.append((title, metrics))
+
+    # Optionnel : on peut désigner le DERNIER fold comme "Test final (futur)"
+    last_title, last_metrics = fold_metrics[-1]
+    print("\n=== Dernier fold considéré comme Test final (futur) ===")
+    print_metrics("Random Forest - Test final (dernier fold)", last_metrics)

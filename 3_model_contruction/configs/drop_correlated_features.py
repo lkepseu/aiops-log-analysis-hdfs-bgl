@@ -100,6 +100,10 @@ def drop_correlated_features(
         non_numeric_df["Label"] = df["Label"]
 
     # Réattacher les colonnes non numériques (BlockId etc.)
+    df_final = numeric_reduced
+    print(f"[DEBUG] Nombre final de features : {len(df_final.columns)}")
+    print(f"[DEBUG] Liste des features retenues : {list(df_final.columns)}\n")
+
     df_final = pd.concat([non_numeric_df, numeric_reduced], axis=1)
 
     # Optionnel : respecter l'ordre original des colonnes autant que possible
@@ -110,7 +114,6 @@ def drop_correlated_features(
     # === Affichage debug avant return ===
     print("\n[DEBUG] Aperçu du DataFrame final après filtrage (10 premières lignes) :")
     print(df_final.head(10))
-    print(f"[DEBUG] Nombre total de colonnes finales : {len(df_final.columns)}")
-    print(f"[DEBUG] Liste des colonnes finales : {list(df_final.columns)}\n")
+
 
     return df_final[ordered_cols]

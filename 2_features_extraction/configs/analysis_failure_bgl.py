@@ -4,9 +4,6 @@ analysis_failure_bgl.py
 Outils d'analyse du taux d'anomalies dans BGL à partir de la matrice
 par fenêtres temporelles (sliding windows).
 
-Objectif : illustrer visuellement
-- l'histogramme des anomalies (nombre de fenêtres normales vs anormales)
-
 Fonctionnalités :
 - identify_failure_event_ids             : Identification des EventId de failure
 - plot_window_anomaly_count              : Histogramme des anomalies (count plot)
@@ -67,7 +64,7 @@ def _add_window_anomaly_flags(
 
 
 
-# Plot 1. Un count plot du nombre de fenêtres normales vs anormales
+# Plot. Un count plot du nombre de fenêtres normales vs anormales
 def plot_window_anomaly_count(
     matrix_csv: str,
     failure_event_ids: list[str],

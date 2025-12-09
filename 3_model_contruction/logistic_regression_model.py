@@ -2,59 +2,68 @@ from typing import Dict, Any
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import TimeSeriesSplit
 
 from configs.metrics_utils import compute_binary_classification_metrics, print_metrics
 
 
-def train_eval_logistic_regression(
-    X_train: pd.DataFrame,
-    y_train: pd.Series,
-    X_val: pd.DataFrame,
-    y_val: pd.Series,
-    X_test: pd.DataFrame,
-    y_test: pd.Series,
+def train_eval_logistic_regression_timeseries(
+    X: pd.DataFrame,
+    y: pd.Series,
+    n_splits: int = 5,
 ) -> None:
     """
-    Entraîne une régression logistique :
-      - modèle initial : train (60%) -> eval sur val (20%)
-      - modèle final   : train+val (80%) -> eval sur test (20%)
+    Entraîne et évalue une régression logistique avec une stratégie de
+    TimeSeries Cross-Validation (Rolling Window / Sliding-origin).
+
+    - Les splits respectent strictement l'ordre temporel (X et y doivent être triés).
+    - À chaque fold, le modèle est entraîné sur le passé et évalué sur un segment futur.
+    - Aucune fuite du futur dans le passé.
+    - Les données de test NE SONT PAS rebalancées : on conserve la vraie distribution
+      (faible taux d'anomalies).
+    - Le rééquilibrage est géré uniquement via class_weight="balanced" sur le train.
+
+    Paramètres
+    ----------
+    X : pd.DataFrame
+        Matrice de features triée chronologiquement (index croissant = temps).
+    y : pd.Series
+        Labels binaires correspondants (0 = normal, 1 = anomalie).
+    n_splits : int
+        Nombre de folds pour la TimeSeries Cross-Validation.
     """
 
-    # --------- 1) Modèle initial (train → val) ---------
-    logreg = LogisticRegression(
-        solver="liblinear",
-        max_iter=1000,
-        class_weight="balanced",
-    )
-    logreg.fit(X_train, y_train)
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    fold_metrics = []
 
-    y_val_pred = logreg.predict(X_val)
-    y_val_proba = logreg.predict_proba(X_val)[:, 1]
+    for fold_idx, (train_idx, test_idx) in enumerate(tscv.split(X), start=1):
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 
-    metrics_val = compute_binary_classification_metrics(
-        y_true=y_val,
-        y_pred=y_val_pred,
-        y_proba=y_val_proba,
-    )
-    print_metrics("Logistic Regression - Validation (60% → 20%)", metrics_val)
+        # ----- Modèle entraîné uniquement sur le passé -----
+        logreg = LogisticRegression(
+            solver="liblinear",
+            max_iter=2000,
+            class_weight="balanced",  # pondération seulement sur le TRAIN
+        )
+        logreg.fit(X_train, y_train)
 
-    # --------- 2) Modèle final (train+val → test) ---------
-    X_train_full = pd.concat([X_train, X_val], axis=0)
-    y_train_full = pd.concat([y_train, y_val], axis=0)
+        # ----- Évaluation sur le futur (test du fold) -----
+        # IMPORTANT : test jamais rebalancé → distribution réelle conservée
+        y_test_pred = logreg.predict(X_test)
+        y_test_proba = logreg.predict_proba(X_test)[:, 1]
 
-    logreg_final = LogisticRegression(
-        solver="liblinear",
-        max_iter=2000,
-        class_weight="balanced",
-    )
-    logreg_final.fit(X_train_full, y_train_full)
+        metrics = compute_binary_classification_metrics(
+            y_true=y_test,
+            y_pred=y_test_pred,
+            y_proba=y_test_proba,
+        )
 
-    y_test_pred = logreg_final.predict(X_test)
-    y_test_proba = logreg_final.predict_proba(X_test)[:, 1]
+        title = f"Logistic Regression - TimeSeriesCV Fold {fold_idx}"
+        print_metrics(title, metrics)
+        fold_metrics.append((title, metrics))
 
-    metrics_test = compute_binary_classification_metrics(
-        y_true=y_test,
-        y_pred=y_test_pred,
-        y_proba=y_test_proba,
-    )
-    print_metrics("Logistic Regression - Test (80% → 20%)", metrics_test)
+    # Optionnel : dernier fold considéré comme "test final"
+    last_title, last_metrics = fold_metrics[-1]
+    print("\n=== Dernier fold considéré comme Test final (futur) ===")
+    print_metrics("Logistic Regression - Test final (dernier fold)", last_metrics)

@@ -9,7 +9,7 @@ python3 $PROJECT_ROOT/2_features_extraction/analyze_failures_repartition.py \
     --labels_csv $PROJECT_ROOT/data/raw/HDFS_anomaly_label.csv \
     --top_k 20
 
-#python3 $PROJECT_ROOT/2_features_extraction/analyze_failures_repartition.py \
-#    --dataset bgl \
-#    --matrix_csv $PROJECT_ROOT/data/features/BGL_matrix.csv \
-#    --structured_csv $PROJECT_ROOT/data/parsed/BGL/BGL.log_structured.csv
+python3 $PROJECT_ROOT/2_features_extraction/analyze_failures_repartition.py \
+    --dataset bgl \
+    --matrix_csv $PROJECT_ROOT/data/features/BGL_matrix.csv \
+    --structured_csv $PROJECT_ROOT/data/parsed/BGL/BGL.log_structured.csv

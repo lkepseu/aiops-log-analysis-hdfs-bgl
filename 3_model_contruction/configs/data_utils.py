@@ -66,8 +66,6 @@ def load_hdfs_matrix_and_labels(
             "normal": 0,
             "Anomaly": 1,
             "anomaly": 1,
-            "False": 0,
-            "True": 1,
         })
     if y.dtype == bool:
         y = y.astype(int)
@@ -87,7 +85,7 @@ def load_hdfs_matrix_and_labels(
     print(df_corr)
 
     # --- CHECK : features suspects (corrélation trop forte) ---
-    suspicious = df_corr[abs(df_corr) > 0.8]  # seuil configurable
+    suspicious = df_corr[abs(df_corr) >= 0.7]  # seuil configurable
     if len(suspicious) > 1:  # y corrélé à y → 1 élément à ignorer
         print("\n[ALERT] Features avec corrélation > 0.8 (risque de leakage) :")
         print(suspicious)
@@ -97,40 +95,40 @@ def load_hdfs_matrix_and_labels(
     return X, y
 
 
-def split_60_20_20_chrono(
-    X: pd.DataFrame,
-    y: pd.Series,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
-    """
-    Découpe les données en 60% / 20% / 20% (train/val/test) en conservant l'ordre actuel
-    (qui doit déjà être chronologique).
-
-    Paramètres
-    ----------
-    X : pd.DataFrame
-        Features triées chronologiquement.
-    y : pd.Series
-        Labels correspondants.
-
-    Retour
-    ------
-    X_train, X_val, X_test, y_train, y_val, y_test
-    """
-    n = len(X)
-    if n != len(y):
-        raise ValueError("X et y doivent avoir la même longueur.")
-
-    idx_60 = int(0.6 * n)
-    idx_80 = int(0.8 * n)
-
-    X_train = X.iloc[:idx_60]
-    y_train = y.iloc[:idx_60]
-
-    X_val = X.iloc[idx_60:idx_80]
-    y_val = y.iloc[idx_60:idx_80]
-
-    X_test = X.iloc[idx_80:]
-    y_test = y.iloc[idx_80:]
-
-    return X_train, X_val, X_test, y_train, y_val, y_test
-
+# def split_60_20_20_chrono(
+#     X: pd.DataFrame,
+#     y: pd.Series,
+# ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
+#     """
+#     Découpe les données en 60% / 20% / 20% (train/val/test) en conservant l'ordre actuel
+#     (qui doit déjà être chronologique).
+#
+#     Paramètres
+#     ----------
+#     X : pd.DataFrame
+#         Features triées chronologiquement.
+#     y : pd.Series
+#         Labels correspondants.
+#
+#     Retour
+#     ------
+#     X_train, X_val, X_test, y_train, y_val, y_test
+#     """
+#     n = len(X)
+#     if n != len(y):
+#         raise ValueError("X et y doivent avoir la même longueur.")
+#
+#     idx_60 = int(0.6 * n)
+#     idx_80 = int(0.8 * n)
+#
+#     X_train = X.iloc[:idx_60]
+#     y_train = y.iloc[:idx_60]
+#
+#     X_val = X.iloc[idx_60:idx_80]
+#     y_val = y.iloc[idx_60:idx_80]
+#
+#     X_test = X.iloc[idx_80:]
+#     y_test = y.iloc[idx_80:]
+#
+#     return X_train, X_val, X_test, y_train, y_val, y_test
+#

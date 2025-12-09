@@ -1,4 +1,4 @@
-import pandas as pd#
+import pandas as pd
 
 def load_structured_logs(structured_csv: str) -> pd.DataFrame:
     """
@@ -71,20 +71,52 @@ def reorder_matrix_by_chronology(matrix_csv: str, block_ts_df: pd.DataFrame) -> 
 
 
 
-def build_chronological_matrix(structured_csv: str, matrix_csv: str, output_csv: str, dataset:str)  :
-    print("[INFO] Chargement structured logs...")
-    df_struct = load_structured_logs(structured_csv)
-    df_matrix_chrono  = pd.read_csv(matrix_csv)
+def build_chronological_matrix(
+    structured_csv: str,
+    matrix_csv: str,
+    output_csv: str,
+    dataset: str,
+) -> None:
+    """
+    Construit / réordonne la matrice de features de manière chronologique.
+
+    - HDFS :
+        * on utilise les logs structurés pour calculer le premier timestamp par BlockId
+        * on réordonne la matrice BlockId × EventId en conséquence
+    - BGL :
+        * la matrice est déjà agrégée par fenêtre temporelle (window_start)
+        * on se contente éventuellement de trier sur window_start si présent
+    """
+    dataset = dataset.lower()
+
+    # Charger la matrice existante
+    df_matrix_chrono = pd.read_csv(matrix_csv)
+
     if dataset == "hdfs":
+        print("[INFO] Chargement structured logs (HDFS)...")
+        df_struct = load_structured_logs(structured_csv)
+
         print("[INFO] Calcul des timestamps de première apparition...")
         block_ts = compute_block_first_timestamp(df_struct)
+
         print("[INFO] Réordonnancement de la matrice EventId-block...")
         df_matrix_chrono = reorder_matrix_by_chronology(matrix_csv, block_ts)
 
+    elif dataset == "bgl":
+        print("[INFO] Dataset BGL : tri éventuel sur 'window_start' s'il est présent...")
+        if "window_start" in df_matrix_chrono.columns:
+            df_matrix_chrono["window_start"] = pd.to_datetime(
+                df_matrix_chrono["window_start"], errors="coerce"
+            )
+            df_matrix_chrono = df_matrix_chrono.sort_values("window_start")
+            print("[INFO] Tri chronologique appliqué sur 'window_start'.")
+        else:
+            print("[WARN] 'window_start' absent de la matrice BGL, aucun tri chronologique appliqué.")
+
+    else:
+        print(f"[WARN] Dataset '{dataset}' non reconnu, aucun réordonnancement spécifique appliqué.")
+
     print("[INFO] Sauvegarde du fichier final trié dans le temps...")
     df_matrix_chrono.to_csv(output_csv, index=False)
-
     print("[OK] Fichier produit :", output_csv)
-#     return df_matrix_chrono
-
 
